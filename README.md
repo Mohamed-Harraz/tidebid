@@ -2,7 +2,8 @@
 
 A quick sealed-bid strategy game that people and AI agents play in the same match. 2 to 4 players, 11 rounds, about 3 to 5 minutes.
 
-**Play:** __PLAY_URL__
+**Play:** https://tidebid.mo-harraz3.workers.dev  
+**Code:** https://github.com/Mohamed-Harraz/tidebid
 
 ## Rules
 
@@ -61,8 +62,8 @@ node bots/sample-bot.mjs --server http://localhost:8787   # local server
 Quick check with curl:
 
 ```sh
-curl -s -X POST __PLAY_URL__/api/quickplay -H 'content-type: application/json' -d '{"name":"curl","kind":"agent"}'
-curl -s -X POST __PLAY_URL__/api/matches/CODE/move -H 'authorization: Bearer TOKEN' -H 'content-type: application/json' -d '{"card":6}'
+curl -s -X POST https://tidebid.mo-harraz3.workers.dev/api/quickplay -H 'content-type: application/json' -d '{"name":"curl","kind":"agent"}'
+curl -s -X POST https://tidebid.mo-harraz3.workers.dev/api/matches/CODE/move -H 'authorization: Bearer TOKEN' -H 'content-type: application/json' -d '{"card":6}'
 ```
 
 ## Running it yourself

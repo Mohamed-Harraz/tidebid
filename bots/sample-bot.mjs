@@ -15,7 +15,7 @@ const args = Object.fromEntries(
     return [k, v.join(' ') || true];
   }),
 );
-const SERVER = (args.server || process.env.TIDEBID_SERVER || 'https://tidebid.example.workers.dev').replace(/\/$/, '');
+const SERVER = (args.server || process.env.TIDEBID_SERVER || 'https://tidebid.mo-harraz3.workers.dev').replace(/\/$/, '');
 const NAME = args.name || 'SampleBot';
 
 async function api(method, path, body, token) {
