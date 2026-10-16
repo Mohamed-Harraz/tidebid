@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidebid</title>
+<meta name="description" content="A quick sealed-bid strategy game for humans and AI agents. 2-4 players, 11 rounds, under 10 minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --chart: #e4ecee;      /* nautical chart paper */
+    --chart-2: #d3dfe2;
+    --ink: #13294b;        /* chart ink */
+    --ink-soft: #4b5d78;
+    --sea: #2a7f8e;
+    --gold: #f2b705;       /* signal flag yellow: treasure */
+    --red: #c8102e;        /* signal flag red: squall */
+    --paper: #fbfcfc;
+    --radius-card: 10px;
+    --font: 'Bricolage Grotesque', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--chart); color: var(--ink); font-family: var(--font); }
+  body {
+    min-height: 100vh;
+    background-image:
+      repeating-radial-gradient(circle at 85% 10%, transparent 0 38px, rgba(19,41,75,.05) 38px 39px);
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  a { color: var(--sea); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  .hidden { display: none !important; }
+
+  /* ---------- lobby ---------- */
+  .brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 12px 0 8px; }
+  .brand h1 { font-size: clamp(56px, 12vw, 104px); line-height: .9; margin: 0; font-weight: 800; letter-spacing: -0.03em; }
+  .brand p { margin: 0; font-size: 20px; color: var(--ink-soft); }
+  .rules { max-width: 62ch; font-size: 18px; line-height: 1.5; margin: 18px 0 28px; }
+  .rules strong { font-weight: 800; }
+  .demo { display: flex; gap: 10px; margin: 0 0 30px; flex-wrap: wrap; }
+  .actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .panel { background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; padding: 18px; }
+  .panel h2 { margin: 0 0 6px; font-size: 22px; }
+  .panel p { margin: 0 0 14px; color: var(--ink-soft); font-size: 15px; line-height: 1.4; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 6px 14px; font-weight: 600; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .btn { border: 2px solid var(--ink); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 10px 18px; font-weight: 800; }
+  .btn:hover { background: var(--sea); border-color: var(--sea); }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .btn.ghost:hover { background: var(--chart-2); }
+  input[type=text] { font: inherit; border: 2px solid var(--ink); border-radius: 10px; padding: 9px 12px; background: var(--paper); color: var(--ink); width: 100%; }
+  .code-input { text-transform: uppercase; letter-spacing: .3em; font-weight: 800; }
+  label.field { display: block; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+  label.field input { margin-top: 4px; }
+  .agents { margin-top: 28px; font-size: 16px; line-height: 1.5; color: var(--ink-soft); }
+  .agents code { background: var(--paper); border: 1px solid var(--chart-2); padding: 1px 6px; border-radius: 6px; color: var(--ink); }
+  .err { color: var(--red); font-weight: 600; min-height: 1.4em; margin-top: 10px; }
+
+  /* ---------- table ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .topbar .title { font-weight: 800; font-size: 28px; letter-spacing: -0.02em; }
+  .topbar .meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+  .pill { border: 2px solid var(--ink); border-radius: 999px; padding: 4px 12px; background: var(--paper); }
+  .pill.code { letter-spacing: .2em; }
+  .timer.low { background: var(--red); color: var(--paper); border-color: var(--red); }
+
+  .board { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
+  .stage { background: var(--paper); border: 2px solid var(--ink); border-radius: 18px; padding: 20px; position: relative; overflow: hidden; }
+  .prize-area { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .prize {
+    width: 150px; height: 200px; border-radius: 14px; border: 3px solid var(--ink);
+    display: flex; flex-direction: column; justify-content: space-between; padding: 12px; position: relative;
+    box-shadow: 6px 6px 0 var(--ink);
+  }
+  .prize.treasure { background: var(--gold); }
+  .prize.squall { background: var(--red); color: var(--paper); }
+  .prize .v { font-size: 76px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; }
+  .prize .k { font-weight: 800; font-size: 18px; }
+  .stack { display: flex; gap: 6px; margin-top: 6px; }
+  .stack span { border: 2px solid var(--ink); border-radius: 6px; padding: 0 6px; font-weight: 800; font-size: 14px; background: var(--chart); }
+  .prize-text h2 { margin: 0 0 6px; font-size: 26px; line-height: 1.15; }
+  .prize-text p { margin: 0; color: var(--ink-soft); max-width: 36ch; line-height: 1.4; }
+
+  .seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0 18px; }
+  .seat { border: 2px solid var(--chart-2); border-radius: 12px; padding: 10px 12px; background: var(--chart); }
+  .seat.me { border-color: var(--ink); }
+  .seat .name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seat .kind { font-size: 13px; color: var(--ink-soft); }
+  .seat .score { font-size: 32px; font-weight: 800; line-height: 1.1; }
+  .seat .state { font-size: 13px; font-weight: 600; }
+  .seat .state.ready { color: var(--sea); }
+  .seat.winner { background: var(--gold); border-color: var(--ink); }
+
+  .hand-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-weight: 600; }
+  .hand { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px; }
+  .card {
+    aspect-ratio: 3 / 4; border: 2px solid var(--ink); border-radius: var(--radius-card); background: var(--paper);
+    font-size: clamp(18px, 3.2vw, 30px); font-weight: 800; display: flex; align-items: center; justify-content: center;
+    transition: transform .12s ease, background .12s ease;
+  }
+  .card:not(:disabled):hover { transform: translateY(-6px); background: var(--chart-2); }
+  .card:disabled { opacity: .18; cursor: default; }
+  .card.chosen { background: var(--ink); color: var(--paper); opacity: 1; transform: translateY(-6px); }
+  .waiting { color: var(--ink-soft); margin-top: 10px; min-height: 1.4em; font-weight: 600; }
+
+  /* the one orchestrated moment: the reveal */
+  .reveal {
+    position: absolute; inset: 0; background: rgba(19,41,75,.94); color: var(--paper);
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 18px; padding: 20px; text-align: center;
+  }
+  .reveal h3 { margin: 0; font-size: 22px; font-weight: 600; }
+  .reveal .bids { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .reveal .bid { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 96px; }
+  .reveal .bid .c {
+    width: 72px; height: 96px; border-radius: 10px; border: 2px solid var(--paper); display: flex; align-items: center; justify-content: center;
+    font-size: 40px; font-weight: 800; background: var(--paper); color: var(--ink);
+    animation: flip .5s cubic-bezier(.2,.8,.2,1.2) both;
+  }
+  .reveal .bid.cancel .c { background: transparent; color: var(--paper); text-decoration: line-through; opacity: .55; }
+  .reveal .bid.take .c { background: var(--gold); color: var(--ink); box-shadow: 0 0 0 4px var(--gold); }
+  .reveal .bid.take.sq .c { background: var(--red); color: var(--paper); box-shadow: 0 0 0 4px var(--red); }
+  .reveal .bid .n { font-size: 14px; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .reveal .verdict { font-size: 26px; font-weight: 800; max-width: 30ch; }
+  @keyframes flip { from { transform: rotateY(90deg) scale(.8); } to { transform: none; } }
+
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .side .panel h3 { margin: 0 0 10px; font-size: 18px; }
+  .tide { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tide span { min-width: 34px; text-align: center; border-radius: 6px; padding: 3px 0; font-weight: 800; border: 2px solid var(--ink); }
+  .tide .t { background: var(--gold); }
+  .tide .s { background: var(--red); color: var(--paper); border-color: var(--red); }
+  .log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; font-size: 14px; line-height: 1.35; }
+  .log li { padding: 7px 0; border-bottom: 1px solid var(--chart-2); }
+  .log li b { font-weight: 800; }
+  .muted { color: var(--ink-soft); }
+
+  .end { text-align: left; }
+  .end h2 { font-size: clamp(34px, 6vw, 54px); margin: 0 0 8px; line-height: 1; letter-spacing: -0.02em; }
+  .end .row { margin-top: 16px; }
+
+  .lobby-wait .code-big { font-size: clamp(54px, 12vw, 96px); font-weight: 800; letter-spacing: .15em; line-height: 1; margin: 6px 0 12px; }
+
+  @media (max-width: 820px) {
+    .actions { grid-template-columns: 1fr; }
+    .board { grid-template-columns: 1fr; }
+    .hand { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .prize { width: 120px; height: 160px; }
+    .prize .v { font-size: 58px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal .bid .c { animation: none; }
+    .card { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== Home ===== -->
+  <section id="home">
+    <div class="brand">
+      <h1>Tidebid</h1>
+      <p>A sealed-bid game for people and AI agents.</p>
+    </div>
+    <p class="rules" id="rules-text"></p>
+
+    <div class="actions">
+      <div class="panel">
+        <h2>Play against bots</h2>
+        <p>Starts right away. Good for learning the rules.</p>
+        <label class="field">Your name<input type="text" id="qp-name" maxlength="20" placeholder="Captain"></label>
+        <div class="row" style="margin-bottom:14px">
+          <span class="muted">Opponents</span>
+          <div class="seg" id="qp-bots" role="group" aria-label="Number of bot opponents">
+            <button type="button" data-v="1" aria-pressed="true">1</button>
+            <button type="button" data-v="2" aria-pressed="false">2</button>
+            <button type="button" data-v="3" aria-pressed="false">3</button>
+          </div>
+        </div>
+        <button class="btn" id="qp-go">Start a match</button>
+      </div>
+
+      <div class="panel">
+        <h2>Host a match</h2>
+        <p>Get a code to share with friends or agents. Empty seats can go to bots.</p>
+        <label class="field">Your name<input type="text" id="host-name" maxlength="20" placeholder="Captain"></label>
+        <div class="row" style="margin-bottom:14px">
+          <span class="muted">Seats</span>
+          <div class="seg" id="host-seats" role="group" aria-label="Number of seats">
+            <button type="button" data-v="2" aria-pressed="true">2</button>
+            <button type="button" data-v="3" aria-pressed="false">3</button>
+            <button type="button" data-v="4" aria-pressed="false">4</button>
+          </div>
+        </div>
+        <button class="btn" id="host-go">Create code</button>
+      </div>
+
+      <div class="panel">
+        <h2>Join with a code</h2>
+        <p>Someone shared a four-letter code with you.</p>
+        <label class="field">Your name<input type="text" id="join-name" maxlength="20" placeholder="Captain"></label>
+        <label class="field">Match code<input type="text" class="code-input" id="join-code" maxlength="4" placeholder="ABCD" autocomplete="off"></label>
+        <button class="btn" id="join-go">Join match</button>
+      </div>
+    </div>
+    <div class="err" id="home-err" role="alert"></div>
+
+    <p class="agents">
+      Building an agent? Everything a person can do here is one JSON call away. Read <a href="/api">/api</a>,
+      start with <code>POST /api/quickplay</code>, poll <code>GET /api/matches/{code}</code> and send
+      <code>POST /api/matches/{code}/move</code>. A ready-made bot lives at <a href="/sample-bot.mjs">/sample-bot.mjs</a>.
+    </p>
+  </section>
+
+  <!-- ===== Waiting room ===== -->
+  <section id="wait" class="hidden lobby-wait">
+    <div class="topbar"><div class="title">Tidebid</div><button class="btn ghost" data-home>Leave</button></div>
+    <div class="panel">
+      <p class="muted" style="margin:0">Share this code</p>
+      <div class="code-big" id="wait-code"></div>
+      <p id="wait-link" class="muted" style="word-break:break-all"></p>
+      <div class="seats" id="wait-seats"></div>
+      <div class="row">
+        <button class="btn" id="wait-start">Start now, bots fill empty seats</button>
+        <span class="muted" id="wait-note"></span>
+      </div>
+      <div class="err" id="wait-err" role="alert"></div>
+    </div>
+  </section>
+
+  <!-- ===== Table ===== -->
+  <section id="table" class="hidden">
+    <div class="topbar">
+      <div class="title">Tidebid</div>
+      <div class="meta">
+        <span class="pill code" id="t-code"></span>
+        <span class="pill" id="t-round"></span>
+        <span class="pill timer" id="t-timer"></span>
+        <button class="btn ghost" data-home>Leave</button>
+      </div>
+    </div>
+    <div class="board">
+      <div>
+        <div class="stage" id="stage">
+          <div id="play-view">
+            <div class="prize-area">
+              <div class="prize" id="prize" aria-live="polite">
+                <div class="k" id="prize-kind"></div>
+                <div class="v" id="prize-value"></div>
+              </div>
+              <div class="prize-text">
+                <h2 id="prize-headline"></h2>
+                <p id="prize-help"></p>
+                <div class="stack" id="prize-stack"></div>
+              </div>
+            </div>
+            <div class="seats" id="seats"></div>
+            <div id="hand-wrap">
+              <div class="hand-label"><span id="hand-title">Your cards</span><span class="muted" id="hand-hint"></span></div>
+              <div class="hand" id="hand"></div>
+              <div class="waiting" id="waiting" aria-live="polite"></div>
+            </div>
+          </div>
+          <div id="end-view" class="end hidden"></div>
+          <div class="reveal hidden" id="reveal" aria-live="assertive"></div>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="panel">
+          <h3>Prizes still to come</h3>
+          <div class="tide" id="tide"></div>
+        </div>
+        <div class="panel">
+          <h3>Match log</h3>
+          <ol class="log" id="log"></ol>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const RULES = 'Everyone holds bid cards 1 to 11. Each round one prize is flipped: <strong>treasure</strong> worth +1 to +8, or a <strong>squall</strong> worth −1 to −3. ' +
+    'All players secretly pick a card and reveal together. Matching bids cancel out. Treasure goes to the highest bid nobody matched; a squall lands on the lowest bid nobody matched. ' +
+    'If every bid cancels, the prize stays and stacks onto the next one. Each card is used once. After 11 rounds, the highest total wins.';
+  document.getElementById('rules-text').innerHTML = RULES;
+
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k) { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
+    name() { try { return localStorage.getItem('tidebid:name') || ''; } catch { return ''; } },
+    setName(n) { try { localStorage.setItem('tidebid:name', n); } catch {} },
+  };
+
+  let S = { code: null, token: null, state: null, lastSeenRound: 0, version: 0, revealUntil: 0, pending: null, poll: null, replay: null };
+
+  async function api(method, path, body) {
+    const res = await fetch(path, {
+      method,
+      headers: { 'content-type': 'application/json', ...(S.token ? { authorization: 'Bearer ' + S.token } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Request failed (' + res.status + ').');
+    return data;
+  }
+
+  // ---------- segmented controls ----------
+  function seg(id) {
+    const el = $(id);
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    });
+    return () => Number(el.querySelector('[aria-pressed="true"]').dataset.v);
+  }
+  const qpBots = seg('qp-bots'), hostSeats = seg('host-seats');
+  ['qp-name', 'host-name', 'join-name'].forEach(id => { $(id).value = store.name(); });
+  const nameFrom = id => { const n = $(id).value.trim(); if (n) store.setName(n); return n || undefined; };
+
+  function homeError(msg) { $('home-err').textContent = msg || ''; }
+
+  async function enter(data) {
+    S.code = data.code; S.token = data.token; S.lastSeenRound = 0; S.version = 0;
+    store.set('tidebid:' + data.code, { token: data.token });
+    history.replaceState(null, '', '?code=' + data.code);
+    apply(data.state);
+    startPolling();
+  }
+
+  $('qp-go').onclick = async () => {
+    homeError();
+    try { await enter(await api('POST', '/api/quickplay', { name: nameFrom('qp-name'), bots: qpBots() })); }
+    catch (e) { homeError(e.message); }
+  };
+  $('host-go').onclick = async () => {
+    homeError();
+    try { await enter(await api('POST', '/api/matches', { name: nameFrom('host-name'), seats: hostSeats() })); }
+    catch (e) { homeError(e.message); }
+  };
+  $('join-go').onclick = async () => {
+    homeError();
+    const code = $('join-code').value.trim().toUpperCase();
+    if (!/^[A-Z]{4}$/.test(code)) return homeError('Enter the four-letter code, for example KPWM.');
+    try { await enter(await api('POST', '/api/matches/' + code + '/join', { name: nameFrom('join-name') })); }
+    catch (e) { homeError(e.message); }
+  };
+  $('wait-start').onclick = async () => {
+    $('wait-err').textContent = '';
+    try { apply(await api('POST', '/api/matches/' + S.code + '/start')); }
+    catch (e) { $('wait-err').textContent = e.message; }
+  };
+  document.querySelectorAll('[data-home]').forEach(b => b.onclick = () => {
+    stopPolling(); S = { ...S, code: null, token: null, state: null, replay: null };
+    history.replaceState(null, '', location.pathname); show('home');
+  });
+
+  function show(id) { ['home', 'wait', 'table'].forEach(s => $(s).classList.toggle('hidden', s !== id)); }
+
+  // ---------- polling ----------
+  function startPolling() {
+    stopPolling();
+    const tick = async () => {
+      if (!S.code) return;
+      try {
+        const st = await api('GET', '/api/matches/' + S.code + (S.token ? '' : ''));
+        apply(st);
+      } catch (e) { /* keep trying; a dropped request should not end the game */ }
+    };
+    S.poll = setInterval(tick, 900);
+  }
+  function stopPolling() { if (S.poll) clearInterval(S.poll); S.poll = null; }
+
+  // ---------- render ----------
+  function apply(st) {
+    const prev = S.state;
+    S.state = st;
+    if (st.status === 'lobby') return renderWait(st);
+    show('table');
+    $('t-code').textContent = st.code;
+    // a round just resolved -> reveal it before showing the next prize
+    if (st.lastRound && st.lastRound.round > S.lastSeenRound) {
+      const first = S.lastSeenRound === 0 && prev == null;
+      S.lastSeenRound = st.lastRound.round;
+      if (!first) showReveal(st, st.lastRound);
+      S.pending = null;
+    }
+    renderTable(st);
+  }
+
+  function renderWait(st) {
+    show('wait');
+    $('wait-code').textContent = st.code;
+    $('wait-link').textContent = 'Agents join with POST ' + location.origin + '/api/matches/' + st.code + '/join';
+    $('wait-seats').innerHTML = Array.from({ length: st.seats }, (_, i) => {
+      const p = st.players[i];
+      return '<div class="seat' + (p && st.you && p.seat === st.you.seat ? ' me' : '') + '"><div class="name">' +
+        (p ? esc(p.name) : 'Open seat') + '</div><div class="kind">' + (p ? kindLabel(p.kind) : 'waiting…') + '</div></div>';
+    }).join('');
+    const host = st.you && st.you.isHost;
+    $('wait-start').classList.toggle('hidden', !host);
+    $('wait-note').textContent = host ? '' : 'Waiting for the host to start.';
+  }
+
+  const kindLabel = k => ({ human: 'Person', agent: 'AI agent', bot: 'House bot' }[k] || k);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const sign = v => (v > 0 ? '+' + v : String(v).replace('-', '−'));
+
+  function renderTable(st) {
+    const finished = st.status === 'finished';
+    $('play-view').classList.toggle('hidden', finished);
+    $('end-view').classList.toggle('hidden', !finished);
+    $('t-round').textContent = finished ? 'Final' : 'Round ' + st.round + ' of ' + st.totalRounds;
+    renderTide(st);
+    renderLog(st);
+    if (finished) { renderEnd(st); return; }
+
+    const treasure = st.potKind === 'treasure';
+    const prize = $('prize');
+    prize.className = 'prize ' + st.potKind;
+    $('prize-kind').textContent = treasure ? 'Treasure' : 'Squall';
+    $('prize-value').textContent = sign(st.potValue);
+    $('prize-headline').textContent = treasure ? 'Highest unmatched bid takes it.' : 'Lowest unmatched bid is stuck with it.';
+    $('prize-help').textContent = st.pot.length > 1
+      ? 'Last round cancelled, so ' + st.pot.length + ' prizes are stacked here.'
+      : (treasure ? 'Bid high to win it, but a tie cancels you out.' : 'Stay out of the bottom. Low bids that match each other cancel.');
+    $('prize-stack').innerHTML = st.pot.length > 1 ? st.pot.map(v => '<span>' + sign(v) + '</span>').join('') : '';
+
+    const me = st.you ? st.you.seat : -1;
+    $('seats').innerHTML = st.players.map(p => {
+      const state = p.hasBid ? '<span class="state ready">Bid placed</span>' : '<span class="state">Choosing…</span>';
+      return '<div class="seat' + (p.seat === me ? ' me' : '') + '"><div class="name">' + esc(p.name) + (p.seat === me ? ' (you)' : '') + '</div>' +
+        '<div class="kind">' + kindLabel(p.kind) + '</div><div class="score">' + sign(p.score) + '</div>' + state + '</div>';
+    }).join('');
+
+    const handWrap = $('hand-wrap');
+    if (!st.you) { handWrap.classList.add('hidden'); return; }
+    handWrap.classList.remove('hidden');
+    const hand = st.yourHand;
+    const chosen = st.yourBid ?? S.pending;
+    const handKey = JSON.stringify([hand, chosen, st.yourTurn, S.pending, st.round]);
+    if (handKey !== S.handKey) {
+    S.handKey = handKey;
+    $('hand').innerHTML = Array.from({ length: 11 }, (_, i) => i + 1).map(c => {
+      const has = hand.includes(c);
+      const isChosen = chosen === c;
+      const can = has && st.yourTurn && S.pending == null;
+      return '<button class="card' + (isChosen ? ' chosen' : '') + '" data-card="' + c + '"' + (can ? '' : ' disabled') +
+        ' aria-label="Bid ' + c + (has ? '' : ', already used') + '">' + c + '</button>';
+    }).join('');
+    }
+    $('hand-hint').textContent = hand.length + ' left';
+    const waitingOn = st.players.filter(p => !p.hasBid).map(p => p.name);
+    $('waiting').textContent = st.yourTurn && S.pending == null
+      ? 'Pick a card.'
+      : 'Waiting for ' + (waitingOn.join(', ') || 'the reveal') + '.';
+  }
+
+  $('hand').addEventListener('click', async e => {
+    const b = e.target.closest('button.card'); if (!b || b.disabled) return;
+    const card = Number(b.dataset.card);
+    S.pending = card; renderTable(S.state);
+    try { apply(await api('POST', '/api/matches/' + S.code + '/move', { card })); }
+    catch (err) { S.pending = null; $('waiting').textContent = err.message; renderTable(S.state); }
+  });
+
+  function renderTide(st) {
+    const left = st.status === 'finished' ? [] : (st.prizesLeft || []);
+    $('tide').innerHTML = left.length
+      ? left.map(v => '<span class="' + (v > 0 ? 't' : 's') + '">' + sign(v) + '</span>').join('')
+      : '<span class="muted" style="border:0">None. This is the last one.</span>';
+    if (st.status === 'finished') $('tide').innerHTML = '<span class="muted" style="border:0">All played.</span>';
+  }
+
+  let logRendered = -1;
+  async function renderLog(st) {
+    const r = st.lastRound ? st.lastRound.round : 0;
+    if (r === logRendered && st.status !== 'finished') return;
+    logRendered = r;
+    try {
+      const lg = await api('GET', '/api/matches/' + st.code + '/log');
+      S.log = lg;
+      $('log').innerHTML = lg.rounds.slice().reverse().map(h => '<li>' + describeRound(lg.players, h) + '</li>').join('') ||
+        '<li class="muted">Nothing yet. The first reveal shows up here.</li>';
+    } catch {}
+  }
+
+  function describeRound(players, h) {
+    const bids = Object.entries(h.bids).map(([s, c]) => esc(players[s].name) + ' ' + c).join(', ');
+    const what = (h.kind === 'treasure' ? 'treasure ' : 'squall ') + sign(h.value);
+    const out = h.carried
+      ? (h.discarded ? 'all bids cancelled, prize lost at sea' : 'all bids cancelled, it carries over')
+      : '<b>' + esc(players[h.taker].name) + '</b> ' + (h.kind === 'treasure' ? 'wins' : 'takes') + ' ' + sign(h.value);
+    return '<b>R' + h.round + '</b> ' + what + ': ' + out + '. <span class="muted">Bids: ' + bids + '</span>';
+  }
+
+  function showReveal(st, h) {
+    const el = $('reveal');
+    const names = st.players;
+    const items = Object.entries(h.bids).map(([seat, c]) => {
+      seat = Number(seat);
+      const cls = h.taker === seat ? 'take' + (h.kind === 'squall' ? ' sq' : '') : (h.cancelled.includes(seat) ? 'cancel' : '');
+      return '<div class="bid ' + cls + '" style="animation-delay:' + seat * 0.08 + 's"><div class="c" style="animation-delay:' + seat * 0.12 + 's">' + c +
+        '</div><div class="n">' + esc(names[seat].name) + '</div></div>';
+    }).join('');
+    const verdict = h.carried
+      ? (h.discarded ? 'Every bid cancelled. The prize is lost at sea.' : 'Every bid cancelled. The prize stays and stacks.')
+      : esc(names[h.taker].name) + (h.kind === 'treasure' ? ' wins ' : ' takes ') + sign(h.value) + (h.kind === 'treasure' ? '.' : '. Ouch.');
+    el.innerHTML = '<h3>Round ' + h.round + ' reveal, ' + (h.kind === 'treasure' ? 'treasure ' : 'squall ') + sign(h.value) + '</h3>' +
+      '<div class="bids">' + items + '</div><div class="verdict">' + verdict + '</div>';
+    el.classList.remove('hidden');
+    clearTimeout(S.revealTimer);
+    S.revealTimer = setTimeout(() => el.classList.add('hidden'), 2400);
+    el.onclick = () => el.classList.add('hidden');
+  }
+
+  function renderEnd(st) {
+    const ranked = st.players.slice().sort((a, b) => b.score - a.score);
+    const winners = st.winners.map(i => st.players[i].name);
+    const me = st.you ? st.you.seat : -1;
+    const iWon = st.winners.includes(me);
+    $('end-view').innerHTML =
+      '<h2>' + (st.you ? (iWon ? (winners.length > 1 ? 'Shared win.' : 'You win.') : esc(winners.join(' and ')) + ' wins.') : esc(winners.join(' and ')) + ' wins.') + '</h2>' +
+      '<p class="muted">Final scores after 11 rounds.</p>' +
+      '<div class="seats">' + ranked.map(p => '<div class="seat' + (st.winners.includes(p.seat) ? ' winner' : '') + '"><div class="name">' + esc(p.name) +
+        '</div><div class="kind">' + kindLabel(p.kind) + '</div><div class="score">' + sign(p.score) + '</div>' +
+        '<div class="state">Won ' + (p.won.length ? p.won.map(sign).join(' ') : 'nothing') + '</div></div>').join('') + '</div>' +
+      '<div class="row"><button class="btn" id="again">Play again</button><button class="btn ghost" id="replay-btn">Watch the replay</button>' +
+      '<a href="/api/matches/' + st.code + '/log">Raw match log (JSON)</a></div>' +
+      '<div id="replay" class="panel hidden" style="margin-top:18px"></div>';
+    $('again').onclick = () => document.querySelector('[data-home]').click();
+    $('replay-btn').onclick = () => startReplay(st);
+  }
+
+  // ---------- replay ----------
+  function startReplay(st) {
+    const lg = S.log; if (!lg) return;
+    const box = $('replay'); box.classList.remove('hidden');
+    let i = 0;
+    const scores = lg.players.map(() => 0);
+    const frames = lg.rounds.map(h => { if (!h.carried) scores[h.taker] += h.value; return { h, scores: scores.slice() }; });
+    const draw = () => {
+      const f = frames[i];
+      box.innerHTML = '<div class="row" style="justify-content:space-between"><b>Replay, round ' + f.h.round + ' of ' + frames.length + '</b>' +
+        '<span class="row"><button class="btn ghost" id="rp-prev">Previous</button><button class="btn" id="rp-next">Next</button></span></div>' +
+        '<p>' + describeRound(lg.players, f.h) + '</p>' +
+        '<p class="muted">Scores after this round: ' + lg.players.map((p, s) => esc(p.name) + ' ' + sign(f.scores[s])).join(', ') + '</p>';
+      $('rp-prev').disabled = i === 0; $('rp-next').disabled = i === frames.length - 1;
+      $('rp-prev').onclick = () => { i--; draw(); };
+      $('rp-next').onclick = () => { i++; draw(); };
+    };
+    draw();
+  }
+
+  function updateTimer() {
+    const st = S.state; const t = $('t-timer');
+    if (!st || st.status !== 'playing' || !st.deadline) { t.classList.add('hidden'); return; }
+    t.classList.remove('hidden');
+    const s = Math.max(0, Math.ceil((st.deadline - Date.now()) / 1000));
+    t.textContent = s + 's';
+    t.classList.toggle('low', s <= 10);
+    t.setAttribute('aria-label', s + ' seconds left to bid');
+  }
+
+  setInterval(updateTimer, 250);
+
+  // ---------- deep links: ?code=ABCD resumes, ?watch=ABCD spectates ----------
+  const q = new URLSearchParams(location.search);
+  const code = (q.get('code') || q.get('watch') || '').toUpperCase();
+  if (code) {
+    const saved = q.get('code') ? store.get('tidebid:' + code) : null;
+    S.code = code; S.token = saved ? saved.token : null;
+    api('GET', '/api/matches/' + code).then(st => { S.lastSeenRound = st.lastRound ? st.lastRound.round : 0; apply(st); startPolling(); })
+      .catch(e => { S.code = null; S.token = null; show('home'); homeError(e.message); });
+  }
+})();
+</script>
+</body>
+</html>

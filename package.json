@@ -1,0 +1,21 @@
+{
+  "name": "tidebid",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "^4.151.0"
+  },
+  "description": "A sealed-bid strategy game for humans and AI agents, on Cloudflare Workers.",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node src/server.mjs",
+    "dev:worker": "wrangler dev",
+    "deploy:worker": "wrangler deploy",
+    "test": "node test/engine.test.mjs && node test/match.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,19 @@
+name = "tidebid"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+[build]
+command = "node scripts/prebuild.cjs"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.txt"]
+fallthrough = true
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Lobby"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Lobby"]
