@@ -318,15 +318,15 @@ const blockBy = title => blocks().find(b => (b.querySelector('.block-title-input
 
 async function fillList(b, items) {
   for (let i = 0; i < items.length; i++) {
-    let units = b.querySelectorAll('.block-list-unit-container');
-    if (units.length <= i) { b.querySelector('button.block-list-button').click(); await sleep(350); units = b.querySelectorAll('.block-list-unit-container'); }
+    let units = b.querySelectorAll('.edit-mode .block-list-unit-container');
+    if (units.length <= i) { b.querySelector('button.block-list-button').click(); await sleep(350); units = b.querySelectorAll('.edit-mode .block-list-unit-container'); }
     const u = units[i];
     u.querySelector('.block-list-title')?.click(); await sleep(100);
     sv(u.querySelector('.block-list-input'), items[i][0]); await sleep(150);
     u.querySelector('.block-text-render.clickable')?.click(); await sleep(100);
     sv(u.querySelector('textarea'), items[i][1]); await sleep(150);
   }
-  return b.querySelectorAll('.block-list-unit-container').length;
+  return b.querySelectorAll('.edit-mode .block-list-unit-container').length;
 }
 
 // Editor page: everything on the "صفحة الخدمة" tab
