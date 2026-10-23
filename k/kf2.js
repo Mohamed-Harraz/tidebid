@@ -27,15 +27,18 @@ window.fillSV = async key => {
     q(`input[name=${names[i]}_addon_price]`).value = u[1];
     jQuery(q(`select[name=${names[i]}_addon_duration]`)).val(String(parseInt(u[2], 10))).trigger('change');
   });
-  const blob = async n => new File([await fetch(IMG + n + '.jpg').then(r => r.blob())], n + '.jpg', { type: 'image/jpeg' });
-  const mainP = FilePond.find(q('input[name=main_image]').closest('.filepond--root'));
-  const otherP = FilePond.find(q('input[name="other_images[]"]').closest('.filepond--root'));
-  if (!mainP.getFiles().length) await mainP.addFile(await blob(d.imgs + '_cover')).catch(e => e);
-  if (!otherP.getFiles().length) for (const i of [1, 2, 3, 4]) { await otherP.addFile(await blob(d.imgs + '_g' + i)).catch(e => e); await sl(300); }
-  await sl(1500);
+  const roots = document.querySelectorAll('.filepond--root');
+  const put = async (root, names) => { const inp = root.querySelector('input.filepond--browser'); const dt = new DataTransfer();
+    for (const n of names) { const b = await fetch(IMG + n + '.jpg').then(x => x.blob()); dt.items.add(new File([b], n + '.jpg', { type: 'image/jpeg' })); }
+    inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true })); };
+  if (!roots[0].querySelectorAll('.filepond--item').length) await put(roots[0], [d.imgs + '_cover']);
+  if (!roots[1].querySelectorAll('.filepond--item').length) await put(roots[1], [1, 2, 3, 4].map(i => d.imgs + '_g' + i));
+  const tog = [...document.querySelectorAll('a')].filter(a => /أضف إضافات أخري|أضف إضافات أخرى/.test(a.textContent)); if (tog[0]) tog[0].click(); await sl(400);
+  for (const w of ['ثانية', 'ثالثة', 'رابعة']) { const a = [...document.querySelectorAll('a.showNextAddon')].find(a => a.textContent.includes('إضافة ' + w)); if (a) { a.click(); await sl(400); } }
+  await sl(5000);
   const b = [...document.querySelectorAll('button[type=submit],input[type=submit]')].find(b => b.closest('form') && b.closest('form').querySelector('input[name=title]'));
   b.scrollIntoView({ block: 'center' }); await sl(400);
   const r = b.getBoundingClientRect();
-  return { desc: desc.length, main: mainP.getFiles().map(f => f.filename + ':' + f.status), other: otherP.getFiles().map(f => f.filename + ':' + f.status), sub: q('select[name=subcategory_id]').value, dur: q('select[name=duration]').value, xy: [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] };
+  return { desc: desc.length, imgs: [roots[0].querySelectorAll('.filepond--item').length, roots[1].querySelectorAll('.filepond--item').length], addons: ['first','second','third','fourth'].map(n => q(`input[name=${n}_addon_title]`).offsetParent ? 'v' : 'h').join(''), sub: q('select[name=subcategory_id]').value, dur: q('select[name=duration]').value, xy: [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] };
 };
 'kf2 loaded';
