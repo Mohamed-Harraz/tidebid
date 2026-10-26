@@ -10,16 +10,22 @@ window.GP = [
   { t: 'Telegram Bot: Gold Price Alerts and Charts', imgs: ['p5_1'],
     h: `<p>A Telegram bot running in the cloud:</p><ul><li>scrapes gold and silver prices every 5 minutes and stores them in a database,</li><li>sends an hourly price report,</li><li>draws price charts for different periods (day, week, month, 3 months, year) at the press of a button in the chat,</li><li>supports user permissions and Cairo time.</li></ul><p><strong>Tech:</strong> Python, Flask, Telegram Bot API, PostgreSQL, Matplotlib. (The chart shown uses sample data.)</p>` }
 ];
-window.gpBuild = async i => {
+window.gpText = async i => {
   const it = GP[i], sl = ms => new Promise(r => setTimeout(r, ms));
   const btn = w => [...document.querySelectorAll('button,a')].filter(b => b.textContent.trim() === w && b.offsetParent).pop();
   window.__W = window.__W || [];
   if (!cloudinary.__p) { const o = cloudinary.createUploadWidget; cloudinary.__p = 1; cloudinary.createUploadWidget = function () { const w = o.apply(this, arguments); window.__W.push(w); return w; }; }
   const ti = document.querySelector('input[maxlength="190"]');
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(ti, it.t); ti.dispatchEvent(new Event('input', { bubbles: true }));
-  btn('Text').click(); await sl(1500);
-  const ins = FroalaEditor.INSTANCES; const fe = ins[ins.length - 1]; fe.html.set(it.h); fe.events.trigger('contentChanged'); fe.undo.saveStep();
-  await sl(500); btn('Save').click(); await sl(1000);
+  if (!document.querySelector('.fr-element')) { btn('Text').click(); await sl(1500); }
+  const ed = document.querySelector('.fr-element'); ed.innerHTML = it.h; ed.dispatchEvent(new Event('input', { bubbles: true }));
+  ed.scrollIntoView({ block: 'center' }); const r = ed.getBoundingClientRect();
+  return [Math.round(r.x + r.width / 2), Math.round(r.y + r.height - 12)];
+};
+window.gpImgs = async i => {
+  const it = GP[i], sl = ms => new Promise(r => setTimeout(r, ms));
+  const btn = w => [...document.querySelectorAll('button,a')].filter(b => b.textContent.trim() === w && b.offsetParent).pop();
+  btn('Save').click(); await sl(1200);
   for (const n of it.imgs) {
     btn('ADD').click(); await sl(800);
     btn('Media').click(); await sl(2500);
@@ -27,6 +33,6 @@ window.gpBuild = async i => {
     const b = await fetch('https://raw.githubusercontent.com/Mohamed-Harraz/tidebid/e7caa46/' + n + '.jpg').then(r => r.blob());
     w.open(null, { files: [new File([b], n + '.jpg', { type: 'image/jpeg' })] }); await sl(9000);
   }
-  return { title: ti.value, imgs: document.querySelectorAll('img[src*="cloudinary"]').length, text: (document.body.innerText.match(/Edit\s+Remove/g) || []).length };
+  return { title: document.querySelector('input[maxlength="190"]').value, imgs: document.querySelectorAll('img[src*="cloudinary"]').length, sections: (document.body.innerText.match(/Edit\s+Remove/g) || []).length };
 };
 'gp loaded';
