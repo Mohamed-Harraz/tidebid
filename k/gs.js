@@ -41,7 +41,7 @@ window.gsFill = async i => {
   for (const p of it.pf) { const e = [...document.querySelectorAll('label,span')].filter(e => e.textContent.trim() === p && e.offsetParent).pop(); if (e) { e.click(); pfGot.push(p); await sl(300); } }
   const C = gsFind(); const W = C.ServiceThumbnail.refs.svcCloudinaryWidget;
   if (!W.svcCoverWidgetVue) W.svcCoverWidgetVue = W.getSvcUploadWidgetVue();
-  const b = await fetch('https://raw.githubusercontent.com/Mohamed-Harraz/tidebid/06a712f/g/en_' + it.k + '.jpg').then(r => r.blob());
+  const b = await fetch('https://raw.githubusercontent.com/Mohamed-Harraz/tidebid/f06ddd7/g/en_' + it.k + '.jpg').then(r => r.blob());
   W.svcCoverWidgetVue.open(null, { files: [new File([b], it.k + '-cover.jpg', { type: 'image/jpeg' })] });
   await sl(8000);
   ed.scrollIntoView({ block: 'center' }); const er = ed.getBoundingClientRect();
