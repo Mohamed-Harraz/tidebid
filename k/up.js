@@ -46,3 +46,20 @@ window.upImgs = async i => {
   return dt.files.length;
 };
 'up loaded';
+window.upPublish = async () => {
+  const sl = ms => new Promise(r => setTimeout(r, ms));
+  const btn = re => [...document.querySelectorAll('[role=dialog] button')].filter(b => b.offsetParent && re.test(b.textContent.trim())).pop();
+  let b = btn(/^Next: Preview$/); if (!b) return 'no preview btn'; b.click(); await sl(2500);
+  b = btn(/^Next: Thumbnail$/); if (!b) return 'no thumb btn: ' + [...document.querySelectorAll('[role=dialog]')].map(d => d.innerText.slice(0, 200)).join(' || '); b.click(); await sl(2500);
+  b = btn(/^Publish$/); if (!b) return 'no publish btn'; b.click(); await sl(5000);
+  const ok = [...document.querySelectorAll('[role=dialog]')].some(d => /is published/.test(d.innerText));
+  const done = btn(/^Done$/); if (done) done.click(); await sl(1500);
+  return ok ? 'published' : 'unknown: ' + [...document.querySelectorAll('[role=dialog]')].map(d => d.innerText.slice(0, 200)).join(' || ');
+};
+window.upStart = async i => {
+  const sl = ms => new Promise(r => setTimeout(r, ms));
+  [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Add portfolio').click(); await sl(3000);
+  const a = upText(i); await upImgs(i); await sl(9000);
+  const s = document.querySelector('[role=dialog] input[type=search]'); s.scrollIntoView({ block: 'center' }); const r = s.getBoundingClientRect();
+  return [a, [...document.querySelectorAll('[role=dialog] img')].filter(x => x.naturalWidth > 300).length, Math.round(r.x + 60), Math.round(r.y + r.height / 2), UP[i].sk];
+};
