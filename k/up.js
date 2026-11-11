@@ -48,7 +48,7 @@ window.upImgs = async i => {
 'up loaded';
 window.upPublish = async () => {
   const sl = ms => new Promise(r => setTimeout(r, ms));
-  const btn = re => [...document.querySelectorAll('[role=dialog] button')].filter(b => b.offsetParent && re.test(b.textContent.trim())).pop();
+  const btn = re => [...document.querySelectorAll('button')].filter(b => b.offsetParent && re.test(b.textContent.trim())).pop();
   let b = btn(/^Next: Preview$/); if (!b) return 'no preview btn'; b.click(); await sl(2500);
   b = btn(/^Next: Thumbnail$/); if (!b) return 'no thumb btn: ' + [...document.querySelectorAll('[role=dialog]')].map(d => d.innerText.slice(0, 200)).join(' || '); b.click(); await sl(2500);
   b = btn(/^Publish$/); if (!b) return 'no publish btn'; b.click(); await sl(5000);
